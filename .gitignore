@@ -1,0 +1,38 @@
+# 1. Build Results (QUAN TRỌNG NHẤT)
+# Đây là các file sinh ra khi chạy code, tuyệt đối không commit
+[Bb]in/
+[Oo]bj/
+
+# 2. Visual Studio & IDE files
+# Cấu hình riêng của máy em, không commit lên cho người khác
+.vs/
+.vscode/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# 3. User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.tooling
+
+# 4. Environment & Secrets (BẢO MẬT)
+# File cấu hình chứa mật khẩu DB, API Key lúc dev
+.env
+
+# 5. OS Generated files (Hệ điều hành)
+# Rác của Mac (DS_Store) và Windows (Thumbs.db)
+.DS_Store
+Thumbs.db
+
+# 6. NuGet Packages
+# Không cần commit thư viện, vì khi pull về máy khác tự restore được
+*.nupkg
+**/packages/
+!**/packages/build/
+
+# 7. Test Results
+TestResults/
