@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -13,13 +14,20 @@ using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var loggerFactory = LoggerFactory.Create(loggingBuilder =>
-{
-    loggingBuilder.AddConsole();
-    loggingBuilder.SetMinimumLevel(LogLevel.Information);
-});
+//var loggerFactory = LoggerFactory.Create(loggingBuilder =>
+//{
+//    loggingBuilder.AddConsole();
+//    loggingBuilder.SetMinimumLevel(LogLevel.Information);
+//});
 
-ILogger<Program> logger = loggerFactory.CreateLogger<Program>();
+//ILogger<Program> logger = loggerFactory.CreateLogger<Program>();
+
+var connectionString = builder.Configuration.GetConnectionString("MySqlConnection");
+var version = new Version(9, 5, 0);
+var serverVersion = new MySqlServerVersion(version);
+builder.Services.AddDbContext<Net.MusicApp.Data.MusicAppDBContext>(
+    options => options.UseMySql(connectionString,serverVersion)
+    );
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(
@@ -108,6 +116,8 @@ app.UseAuthorization();
 // Configure the HTTP request pipeline.
 app.UseHttpsRedirection();
 app.UseRateLimiter();
+
+
 app.MapGroupTest();
 app.MapGroupAuth();
 app.MapGroupAdmin();
