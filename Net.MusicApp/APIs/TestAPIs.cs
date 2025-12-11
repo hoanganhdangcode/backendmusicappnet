@@ -4,7 +4,7 @@ namespace Net.MusicApp.APIs
 {
     public static class TestAPIs
     {
-        public static void MapTestAPI(this WebApplication app) {
+        public static void MapGroupTest(this WebApplication app) {
             var group = app.MapGroup("/test").WithTags("Test APIs");
             group.MapGet("/get", () => "GET thanh cong");
             group.MapGet("/getlimit", () => "GET co limit thanh cong");

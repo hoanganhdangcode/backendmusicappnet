@@ -1,0 +1,14 @@
+﻿- Tao cap khoa private - public rsa (su dung git bash do goi openssl co san trong gitbash)
+
+openssl genrsa -out rsa_private_key.pem 2048
+
+openssl rsa -in rsa_private_key.pem -outform PEM -pubout -out rsa_public_key.pem
+
+- Cai thu vien for JWT: 
+
+ dotnet add package Microsoft.AspNetCore.Authentication.JwtBearer
+
+ dotnet add package System.IdentityModel.Tokens.Jwt
+
+ dotnet add package Microsoft.IdentityModel.Tokens
+
