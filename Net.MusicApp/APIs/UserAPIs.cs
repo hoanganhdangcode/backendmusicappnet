@@ -5,7 +5,7 @@
         public static void MapGroupUser(this WebApplication app)
         {
             var group = app.MapGroup("/user").WithTags("User APIs");
-            group.MapGet("/get", () => "GET thanh cong");
+            group.MapGet("/get", () => "GET thanh cong").RequireAuthorization();
          
 
         }
