@@ -1,4 +1,5 @@
-﻿using System.Net.WebSockets;
+﻿using Microsoft.AspNetCore.Mvc;
+using System.Net.WebSockets;
 
 namespace Net.MusicApp.APIs
 {
@@ -6,18 +7,27 @@ namespace Net.MusicApp.APIs
     {
         public static void MapGroupTest(this WebApplication app) {
             var group = app.MapGroup("/test").WithTags("Test APIs");
-            group.MapGet("/get", () => "GET thanh cong");
-            group.MapGet("/getlimit", () => "GET co limit thanh cong");
-            group.MapPost("/post", () => "POST thanh cong");
-            group.MapPost("/postlimit", () => "POST co limit thanh cong");
-            group.MapPatch("/patch", () => "PATCH thanh cong");
-            group.MapPatch("/patchlimit", () => "PATCH co limit thanh cong");
-            group.MapPut("/put", () => "PUT thanh cong");
-            group.MapPut("/putlimit", () => "PUT co limit thanh cong");
-            group.MapDelete("/delete", () => "POP thanh cong");
-            group.MapDelete("/deletelimit", () => "POP co limit thanh cong");
+            group.MapGet("testjwt",()=>"OK").RequireAuthorization();
 
+            group.MapGet("/get", ([FromQuery] string q) =>
+            $"GET thanh cong: {q}"
+);
 
+            group.MapPost("/post", ([FromBody] string bodySample) =>
+                $"POST thanh cong: {bodySample}"
+            );
+
+            group.MapPatch("/patch", ([FromBody] string bodySample) =>
+                $"PATCH thanh cong: {bodySample}"
+            );
+
+            group.MapPut("/put", ([FromBody] string bodySample) =>
+                $"PUT thanh cong: {bodySample}"
+            );
+
+            group.MapDelete("/delete", ([FromBody] string bodySample) =>
+                $"DELETE thanh cong: {bodySample}"
+            );
         }
     }
 }

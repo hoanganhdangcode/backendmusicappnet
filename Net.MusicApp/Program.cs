@@ -8,19 +8,16 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using Net.MusicApp.APIs;
+using Net.MusicApp.Services;
 using System.Security.Cryptography;
 using System.Threading.RateLimiting;
+using Microsoft.OpenApi.Models;
+
+
 
 
 var builder = WebApplication.CreateBuilder(args);
 
-//var loggerFactory = LoggerFactory.Create(loggingBuilder =>
-//{
-//    loggingBuilder.AddConsole();
-//    loggingBuilder.SetMinimumLevel(LogLevel.Information);
-//});
-
-//ILogger<Program> logger = loggerFactory.CreateLogger<Program>();
 
 var connectionString = builder.Configuration.GetConnectionString("MySqlConnection");
 var version = new Version(9, 5, 0);
@@ -42,22 +39,16 @@ builder.Services.AddSwaggerGen(
             In = ParameterLocation.Header,
             Description = "Nhập JWT Token theo định dạng: **Bearer {token}**"
         });
-
-        // 2. Định nghĩa Security Requirement (Áp dụng token cho các endpoint)
-    //    option.AddSecurityRequirement(new OpenApiSecurityRequirement
-    //{
-    //    {
-    //        new OpenApiSecurityScheme
-    //        {
-    //            Reference = new OpenApiReference
-    //            {
-    //                Type = ReferenceType.SecurityScheme,
-    //                Id = "Bearer"
-    //            }
-    //        },
-    //        new string[] {}
-    //    }
-    //});
+        option.AddSecurityRequirement(new OpenApiSecurityRequirement
+                    {
+                        {
+                            new OpenApiSecurityScheme
+                            {
+                                Reference = new OpenApiReference {
+                                    Type = ReferenceType.SecurityScheme,
+                                    Id = "Bearer" }
+                            }, new List<string>() }
+                    });
     });
 builder.Services.AddRateLimiter(_ => {
         _.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -77,14 +68,11 @@ builder.Services.AddRateLimiter(_ => {
             });
     });
 });
-var publicKeyPem = File.ReadAllText("Keys/rsa_public_key.pem");
-var rsa = RSA.Create();
-rsa.ImportFromPem(publicKeyPem);
+var rsa = JWTHelper.LoadRsaPublicKeyFromPem("Keys/rsa_public_key.pem");
 
 builder.Services.AddAuthentication("Bearer")
     .AddJwtBearer("Bearer", options =>
     {
-        // Nếu bạn tự ký RSA thì dùng cấu hình dưới
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = false,
@@ -96,6 +84,7 @@ builder.Services.AddAuthentication("Bearer")
                 )
             
         };
+       
     });
 
 builder.Services.AddAuthorization();
@@ -112,8 +101,6 @@ app.UseSwaggerUI(
 app.UseAuthentication();
 app.UseAuthorization();
 
-
-// Configure the HTTP request pipeline.
 app.UseHttpsRedirection();
 app.UseRateLimiter();
 

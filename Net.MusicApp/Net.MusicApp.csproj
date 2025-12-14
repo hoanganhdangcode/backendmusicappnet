@@ -7,6 +7,17 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Services\AdminService\**" />
+    <Compile Remove="Services\UserService\**" />
+    <Content Remove="Services\AdminService\**" />
+    <Content Remove="Services\UserService\**" />
+    <EmbeddedResource Remove="Services\AdminService\**" />
+    <EmbeddedResource Remove="Services\UserService\**" />
+    <None Remove="Services\AdminService\**" />
+    <None Remove="Services\UserService\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.1" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.0">
@@ -19,13 +30,8 @@
     </PackageReference>
     <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.15.0" />
     <PackageReference Include="Pomelo.EntityFrameworkCore.MySql" Version="8.0.0" />
-    <PackageReference Include="Swashbuckle.AspNetCore" Version="10.0.1" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.9.0" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.15.0" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Services\AdminService\" />
-    <Folder Include="Services\UserService\" />
   </ItemGroup>
 
 </Project>
