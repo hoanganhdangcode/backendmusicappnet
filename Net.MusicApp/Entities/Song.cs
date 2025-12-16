@@ -14,6 +14,8 @@ namespace Net.MusicApp.Entities
         public string AudioUrl { get; set; }
         public string? ImageUrl { get; set; } = "";
 
+        public int listenCount { get; set; } = 0;
+
         public DateTime CreatedAt { get; set; }
 
         // FK → Singer

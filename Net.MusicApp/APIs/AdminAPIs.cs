@@ -180,7 +180,164 @@ namespace Net.MusicApp.APIs
                 return Results.Ok("Đã xóa bài hát.");
             });
 
+            group.MapGet("/songs", async (MusicAppDBContext db, string? keyword, int pageIndex = 1, int pageSize = 10) =>
+            {
+                var query = db.Songs.AsNoTracking();
+
+                // Tìm kiếm
+                if (!string.IsNullOrWhiteSpace(keyword))
+                {
+                    query = query.Where(s => s.Name.Contains(keyword));
+                }
+
+                // Đếm tổng số lượng (để chia trang)
+                int totalCount = await query.CountAsync();
+
+                // Lấy dữ liệu phân trang
+                var items = await query
+                    .OrderByDescending(s => s.CreatedAt) // Mới nhất lên đầu
+                    .Skip((pageIndex - 1) * pageSize)
+                    .Take(pageSize)
+                    .Select(s => new SongDto // Dùng SongDto có sẵn trong AdminDTO.cs
+                    {
+                        SongId = s.SongId,
+                        Name = s.Name,
+                        Description = s.Description,
+                        AudioUrl = s.AudioUrl,
+                        ImageUrl = s.ImageUrl,
+                        CreatedAt = s.CreatedAt,
+                        SingerId = s.SingerId,
+                        SingerName = s.Singer.Name,
+                        GenreId = s.GenreId,
+                        GenreName = s.Genre.Name
+                    })
+                    .ToListAsync();
+
+                return Results.Ok(new PagedResult<SongDto>
+                {
+                    Items = items,
+                    TotalCount = totalCount,
+                    PageIndex = pageIndex,
+                    PageSize = pageSize
+                });
+            });
+
+            // --- 2. GET LIST SINGERS (Quản lý ca sĩ) ---
+            group.MapGet("/singers", async (MusicAppDBContext db, string? keyword, int pageIndex = 1, int pageSize = 10) =>
+            {
+                var query = db.Singers.AsNoTracking();
+
+                if (!string.IsNullOrWhiteSpace(keyword))
+                {
+                    query = query.Where(s => s.Name.Contains(keyword));
+                }
+
+                int totalCount = await query.CountAsync();
+
+                var items = await query
+                    .OrderByDescending(s => s.CreatedAt)
+                    .Skip((pageIndex - 1) * pageSize)
+                    .Take(pageSize)
+                    .Select(s => new SingerDto
+                    {
+                        SingerId = s.SingerId,
+                        Name = s.Name,
+                        Description = s.Description,
+                        ImageUrl = s.ImageUrl,
+                        CreatedAt = s.CreatedAt
+                    })
+                    .ToListAsync();
+
+                return Results.Ok(new PagedResult<SingerDto>
+                {
+                    Items = items,
+                    TotalCount = totalCount,
+                    PageIndex = pageIndex,
+                    PageSize = pageSize
+                });
+            });
+
+            // --- 3. GET LIST GENRES (Quản lý thể loại) ---
+            group.MapGet("/genres", async (MusicAppDBContext db, string? keyword, int pageIndex = 1, int pageSize = 10) =>
+            {
+                var query = db.Genres.AsNoTracking();
+
+                if (!string.IsNullOrWhiteSpace(keyword))
+                {
+                    query = query.Where(g => g.Name.Contains(keyword));
+                }
+
+                int totalCount = await query.CountAsync();
+
+                var items = await query
+                    .OrderByDescending(g => g.CreatedAt)
+                    .Skip((pageIndex - 1) * pageSize)
+                    .Take(pageSize)
+                    .Select(g => new GenreDto
+                    {
+                        GenreId = g.GenreId,
+                        Name = g.Name,
+                        ImageUrl = g.imageurl, // Lưu ý: map đúng tên biến imageurl trong Entity
+                        CreatedAt = g.CreatedAt
+                    })
+                    .ToListAsync();
+
+                return Results.Ok(new PagedResult<GenreDto>
+                {
+                    Items = items,
+                    TotalCount = totalCount,
+                    PageIndex = pageIndex,
+                    PageSize = pageSize
+                });
+            });
+
+            // --- 4. GET LIST USERS (Quản lý người dùng) ---
+            group.MapGet("/users", async (MusicAppDBContext db, string? keyword, int pageIndex = 1, int pageSize = 10) =>
+            {
+                var query = db.Users.AsNoTracking();
+
+                if (!string.IsNullOrWhiteSpace(keyword))
+                {
+                    // Tìm theo tên hoặc email
+                    query = query.Where(u => u.Name.Contains(keyword) || u.Email.Contains(keyword));
+                }
+
+                int totalCount = await query.CountAsync();
+
+                var items = await query
+                    .OrderByDescending(u => u.CreatedAt)
+                    .Skip((pageIndex - 1) * pageSize)
+                    .Take(pageSize)
+                    .Select(u => new UserDto
+                    {
+                        UserId = u.UserId,
+                        // Nếu em đang mã hóa tên/email trong DB thì cần Decrypt ở đây, 
+                        // nhưng trong Select của LINQ to Entities không gọi hàm C# ngoài được.
+                        // Tạm thời trả về dữ liệu thô, FE sẽ tự xử lý hoặc em decrypt sau khi query xong.
+                        Name = u.Name,
+                        Email = u.Email,
+                        AvatarUrl = u.AvatarUrl,
+                        Role = u.Role == 0 ? "User" : "Admin", // Map Enum Role sang string
+                        CreatedAt = u.CreatedAt
+                    })
+                    .ToListAsync();
+
+                // [Optional] Nếu cần giải mã dữ liệu (vì em có dùng CryptoHelper trong AuthAPIs)
+                // Em có thể dùng vòng lặp foreach ở đây để giải mã 'items' trước khi trả về.
+
+                return Results.Ok(new PagedResult<UserDto>
+                {
+                    Items = items,
+                    TotalCount = totalCount,
+                    PageIndex = pageIndex,
+                    PageSize = pageSize
+                });
+            });
+
+            // ... Các API POST/PUT/DELETE cũ giữ nguyên bên dưới ...
         }
+
+    }
        
     }
-}
+

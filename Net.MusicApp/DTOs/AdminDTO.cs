@@ -70,6 +70,8 @@ namespace Net.MusicApp.DTOs
         public string? Description { get; set; }
         public string AudioUrl { get; set; }
         public string? ImageUrl { get; set; }
+
+        public int listenCount { get; set; }
         public DateTime CreatedAt { get; set; }
 
         // Thông tin tóm tắt của quan hệ (tránh loop reference)
@@ -118,5 +120,23 @@ namespace Net.MusicApp.DTOs
         public int SingerId { get; set; }
         public int GenreId { get; set; }
     }
+    public class UserDto
+    {
+        public int UserId { get; set; }
+        public string Name { get; set; }
+        public string Email { get; set; }
+        public string? AvatarUrl { get; set; }
+        public string Role { get; set; } // Trả về chuỗi "Admin" hoặc "User" cho dễ nhìn
+        public DateTime CreatedAt { get; set; }
+    }
+    public class PagedResult<T>
+    {
+        public List<T> Items { get; set; }
+        public int TotalCount { get; set; }
+        public int PageIndex { get; set; }
+        public int PageSize { get; set; }
+        public int TotalPages => (int)Math.Ceiling((double)TotalCount / PageSize);
+    }
+
 
 }

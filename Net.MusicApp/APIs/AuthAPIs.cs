@@ -17,7 +17,6 @@ namespace Net.MusicApp.APIs
             #region Đăng nhập
             group.MapPost("/login", async ([FromBody]LoginDto dto, MusicAppDBContext db) =>
             {
-                //var emailencrypt = CryptoHelper.EncryptAES256(dto.Email);
                 var user = await db.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
                 if (user == null) return Results.Unauthorized();
 
