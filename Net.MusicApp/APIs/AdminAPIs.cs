@@ -3,6 +3,8 @@ using Microsoft.EntityFrameworkCore;
 using Net.MusicApp.Data;
 using Net.MusicApp.DTOs;
 using Net.MusicApp.Entities;
+using Net.MusicApp.Services;
+
 
 namespace Net.MusicApp.APIs
 {
@@ -28,7 +30,7 @@ namespace Net.MusicApp.APIs
                 await dbContext.SaveChangesAsync();
 
                 // 4. Trả về mã 201 Created và thông tin vừa tạo
-                return Results.Created($"/singer/{newSinger.SingerId}", newSinger);
+                return Results.Created();
             });
             group.MapPost("/genre/add", async ([FromBody] CreateGenreDto dto, MusicAppDBContext dbContext) =>
             {
@@ -42,7 +44,7 @@ namespace Net.MusicApp.APIs
                 dbContext.Genres.Add(newGenre);
                 await dbContext.SaveChangesAsync();
 
-                return Results.Created($"/genre/{newGenre.GenreId}", newGenre);
+                return Results.Created();
             });
             group.MapPost("/song/add", async ([FromBody] CreateSongDto dto, MusicAppDBContext dbContext) =>
             {
@@ -74,7 +76,7 @@ namespace Net.MusicApp.APIs
                 dbContext.Songs.Add(newSong);
                 await dbContext.SaveChangesAsync();
 
-                return Results.Created($"/song/{newSong.SongId}", newSong);
+                return Results.Created();
             });
             // --- SỬA CA SĨ ---
             group.MapPut("/singer/update/{id}", async (int id, [FromBody] UpdateSingerDto dto, MusicAppDBContext dbContext) =>
@@ -110,9 +112,18 @@ namespace Net.MusicApp.APIs
             {
                 var song = await dbContext.Songs.FindAsync(id);
                 if (song == null) return Results.NotFound("Không tìm thấy bài hát.");
+                var singerExists = await dbContext.Singers.FindAsync(dto.SingerId);
+                if (singerExists == null)
+                {
+                    return Results.BadRequest("Ca sĩ không tồn tại.");
+                }
 
-                // (Tuỳ chọn) Em có thể check xem SingerId và GenreId mới có tồn tại không như lúc Add
-
+                // [Optional] Kiểm tra khóa ngoại (Thể loại có tồn tại không?)
+                var genreExists = await dbContext.Genres.FindAsync(dto.GenreId);
+                if (genreExists == null)
+                {
+                    return Results.BadRequest("Thể loại không tồn tại.");
+                }
                 song.Name = dto.Name;
                 song.Description = dto.Description;
                 song.AudioUrl = dto.AudioUrl;
@@ -121,25 +132,23 @@ namespace Net.MusicApp.APIs
                 song.GenreId = dto.GenreId;   // Cho phép đổi thể loại
 
                 await dbContext.SaveChangesAsync();
-                return Results.Ok(song);
+                return Results.Ok();
             });
             // --- XÓA CA SĨ ---
             group.MapDelete("/singer/delete/{id}", async (int id, MusicAppDBContext dbContext) =>
             {
-                // 1. Tìm ca sĩ
+                //  Tìm ca sĩ
                 var singer = await dbContext.Singers.FindAsync(id);
                 if (singer == null) return Results.NotFound("Không tìm thấy ca sĩ.");
 
-                // 2. KIỂM TRA: Có bài hát nào của ca sĩ này không?
+                //  Có bài hát nào của ca sĩ này không?
                 bool hasSongs = await dbContext.Songs.AnyAsync(s => s.SingerId == id);
 
                 if (hasSongs)
                 {
-                    // Trả về lỗi 409 Conflict với thông báo rõ ràng
                     return Results.Conflict($"Ca sĩ '{singer.Name}' đang có bài hát trong hệ thống. Vui lòng xóa bài hát trước.");
                 }
 
-                // 3. Nếu an toàn -> Xóa
                 dbContext.Singers.Remove(singer);
                 await dbContext.SaveChangesAsync();
 
@@ -168,7 +177,6 @@ namespace Net.MusicApp.APIs
                 return Results.Ok("Đã xóa thể loại thành công.");
             });
 
-            // --- XÓA BÀI HÁT ---
             group.MapDelete("/song/delete/{id}", async (int id, MusicAppDBContext dbContext) =>
             {
                 var song = await dbContext.Songs.FindAsync(id);
@@ -180,25 +188,18 @@ namespace Net.MusicApp.APIs
                 return Results.Ok("Đã xóa bài hát.");
             });
 
-            group.MapGet("/songs", async (MusicAppDBContext db, string? keyword, int pageIndex = 1, int pageSize = 10) =>
+            group.MapGet("/songs", async (MusicAppDBContext db, string? keyword) =>
             {
                 var query = db.Songs.AsNoTracking();
 
-                // Tìm kiếm
                 if (!string.IsNullOrWhiteSpace(keyword))
                 {
                     query = query.Where(s => s.Name.Contains(keyword));
                 }
 
-                // Đếm tổng số lượng (để chia trang)
-                int totalCount = await query.CountAsync();
-
-                // Lấy dữ liệu phân trang
                 var items = await query
-                    .OrderByDescending(s => s.CreatedAt) // Mới nhất lên đầu
-                    .Skip((pageIndex - 1) * pageSize)
-                    .Take(pageSize)
-                    .Select(s => new SongDto // Dùng SongDto có sẵn trong AdminDTO.cs
+                    .OrderByDescending(s => s.CreatedAt)
+                    .Select(s => new SongDto
                     {
                         SongId = s.SongId,
                         Name = s.Name,
@@ -213,17 +214,11 @@ namespace Net.MusicApp.APIs
                     })
                     .ToListAsync();
 
-                return Results.Ok(new PagedResult<SongDto>
-                {
-                    Items = items,
-                    TotalCount = totalCount,
-                    PageIndex = pageIndex,
-                    PageSize = pageSize
-                });
+                return Results.Ok(items);
             });
 
-            // --- 2. GET LIST SINGERS (Quản lý ca sĩ) ---
-            group.MapGet("/singers", async (MusicAppDBContext db, string? keyword, int pageIndex = 1, int pageSize = 10) =>
+
+            group.MapGet("/singers", async (MusicAppDBContext db, string? keyword) =>
             {
                 var query = db.Singers.AsNoTracking();
 
@@ -232,12 +227,8 @@ namespace Net.MusicApp.APIs
                     query = query.Where(s => s.Name.Contains(keyword));
                 }
 
-                int totalCount = await query.CountAsync();
-
                 var items = await query
                     .OrderByDescending(s => s.CreatedAt)
-                    .Skip((pageIndex - 1) * pageSize)
-                    .Take(pageSize)
                     .Select(s => new SingerDto
                     {
                         SingerId = s.SingerId,
@@ -248,17 +239,9 @@ namespace Net.MusicApp.APIs
                     })
                     .ToListAsync();
 
-                return Results.Ok(new PagedResult<SingerDto>
-                {
-                    Items = items,
-                    TotalCount = totalCount,
-                    PageIndex = pageIndex,
-                    PageSize = pageSize
-                });
+                return Results.Ok(items);
             });
-
-            // --- 3. GET LIST GENRES (Quản lý thể loại) ---
-            group.MapGet("/genres", async (MusicAppDBContext db, string? keyword, int pageIndex = 1, int pageSize = 10) =>
+            group.MapGet("/genres", async (MusicAppDBContext db, string? keyword) =>
             {
                 var query = db.Genres.AsNoTracking();
 
@@ -267,74 +250,83 @@ namespace Net.MusicApp.APIs
                     query = query.Where(g => g.Name.Contains(keyword));
                 }
 
-                int totalCount = await query.CountAsync();
-
                 var items = await query
                     .OrderByDescending(g => g.CreatedAt)
-                    .Skip((pageIndex - 1) * pageSize)
-                    .Take(pageSize)
                     .Select(g => new GenreDto
                     {
                         GenreId = g.GenreId,
                         Name = g.Name,
-                        ImageUrl = g.imageurl, // Lưu ý: map đúng tên biến imageurl trong Entity
+                        ImageUrl = g.imageurl, 
                         CreatedAt = g.CreatedAt
                     })
                     .ToListAsync();
 
-                return Results.Ok(new PagedResult<GenreDto>
-                {
-                    Items = items,
-                    TotalCount = totalCount,
-                    PageIndex = pageIndex,
-                    PageSize = pageSize
-                });
+                return Results.Ok(items);
             });
-
-            // --- 4. GET LIST USERS (Quản lý người dùng) ---
-            group.MapGet("/users", async (MusicAppDBContext db, string? keyword, int pageIndex = 1, int pageSize = 10) =>
+            group.MapGet("/users", async (MusicAppDBContext db, string? keyword) =>
             {
                 var query = db.Users.AsNoTracking();
 
                 if (!string.IsNullOrWhiteSpace(keyword))
                 {
-                    // Tìm theo tên hoặc email
-                    query = query.Where(u => u.Name.Contains(keyword) || u.Email.Contains(keyword));
+                    query = query.Where(u =>
+                        u.Name.Contains(keyword) ||
+                        u.Email.Contains(keyword));
                 }
-
-                int totalCount = await query.CountAsync();
 
                 var items = await query
                     .OrderByDescending(u => u.CreatedAt)
-                    .Skip((pageIndex - 1) * pageSize)
-                    .Take(pageSize)
                     .Select(u => new UserDto
                     {
                         UserId = u.UserId,
-                        // Nếu em đang mã hóa tên/email trong DB thì cần Decrypt ở đây, 
-                        // nhưng trong Select của LINQ to Entities không gọi hàm C# ngoài được.
-                        // Tạm thời trả về dữ liệu thô, FE sẽ tự xử lý hoặc em decrypt sau khi query xong.
                         Name = u.Name,
                         Email = u.Email,
                         AvatarUrl = u.AvatarUrl,
-                        Role = u.Role == 0 ? "User" : "Admin", // Map Enum Role sang string
+                        Role = u.Role == 0 ? "User" : "Admin",
                         CreatedAt = u.CreatedAt
                     })
                     .ToListAsync();
 
-                // [Optional] Nếu cần giải mã dữ liệu (vì em có dùng CryptoHelper trong AuthAPIs)
-                // Em có thể dùng vòng lặp foreach ở đây để giải mã 'items' trước khi trả về.
-
-                return Results.Ok(new PagedResult<UserDto>
+                foreach (var u in items)
                 {
-                    Items = items,
-                    TotalCount = totalCount,
-                    PageIndex = pageIndex,
-                    PageSize = pageSize
+                    if (!string.IsNullOrEmpty(u.Name))
+                        u.Name = CryptoHelper.DecryptAES256(u.Name);
+
+                    if (!string.IsNullOrEmpty(u.AvatarUrl))
+                        u.AvatarUrl = CryptoHelper.DecryptAES256(u.AvatarUrl);
+                }
+
+                return Results.Ok(items);
+            });
+            group.MapGet("/upload/signature", (CloudinaryService cloudinary, IConfiguration configuration) =>
+            {
+                var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+                var parameters = new Dictionary<string, object>
+    {
+        { "timestamp", timestamp },
+        { "folder", "musicapp" }
+    };
+
+                var signature = cloudinary.CreateSignature(parameters);
+
+                var cloud = configuration.GetSection("Cloudinary");
+
+                return Results.Ok(new
+                {
+                    cloudName = cloud["CloudName"],
+                    apiKey = cloud["ApiKey"],
+                    timestamp,
+                    signature,
+                    folder = "musicapp"
                 });
             });
 
-            // ... Các API POST/PUT/DELETE cũ giữ nguyên bên dưới ...
+
+
+
+
+
         }
 
     }

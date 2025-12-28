@@ -15,6 +15,7 @@ namespace Net.MusicApp.DTOs
         public string AccessToken { get; set; } = null!;
         public UserInfoResponseDto User { get; set; } = null!;
     }
+
     public class LoginDto
     {
         public string Email { get; set; } = null!;
@@ -39,5 +40,8 @@ namespace Net.MusicApp.DTOs
     {
         public string AvatarUrl { get; set; } = null!;
     }
-
+    //public class GetInfoDTO {
+    //    public int uid { get; set; }
+    //}
+   
 }

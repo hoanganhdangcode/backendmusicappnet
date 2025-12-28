@@ -73,31 +73,61 @@ namespace Net.MusicApp.APIs
 
                 return Results.Ok(trendingSongs);
             });
+
+             group.MapGet("/songs", async (MusicAppDBContext db, string? keyword) =>
+            {
+                int take = 40;
+                var query = db.Songs.AsNoTracking();
+
+                if (!string.IsNullOrWhiteSpace(keyword))
+                {
+                    query = query.Where(s => s.Name.Contains(keyword));
+                }
+
+                var trendingSongs = await query
+                    .OrderByDescending(s => s.listenCount)
+                    .Take(take)
+                    .Select(s => new SongDto
+                    {
+                        SongId = s.SongId,
+                        Name = s.Name,
+                        ImageUrl = s.ImageUrl,
+                        AudioUrl = s.AudioUrl,
+                        SingerName = s.Singer != null ? s.Singer.Name : "",
+                        GenreName = s.Genre != null ? s.Genre.Name : "",
+                        listenCount = s.listenCount,
+                        CreatedAt = s.CreatedAt
+                    })
+                    .ToListAsync();
+
+                return Results.Ok(trendingSongs);
+            });
             group.MapGet("/singers/trending", async (MusicAppDBContext db) =>
             {
                 var trendingSingers = await db.Singers
                     .AsNoTracking()
-                    // Quan trọng: Tính toán trực tiếp trong Database
                     .Select(s => new SingerTrendingDto
                     {
                         SingerId = s.SingerId,
                         Name = s.Name,
                         ImageUrl = s.ImageUrl,
-                        // Cộng tổng ListenCount của tất cả bài hát thuộc ca sĩ này
-                        TotalListens = s.Songs.Sum(song => song.listenCount),
+                        TotalListens = s.Songs
+                            .Select(song => (int?)song.listenCount)
+                            .Sum() ?? 0,
                         SongCount = s.Songs.Count()
                     })
-                    .OrderByDescending(s => s.TotalListens) // Sắp xếp giảm dần theo tổng lượt nghe
-                    .Take(10) // Lấy top 10
+                    .OrderByDescending(s => s.TotalListens)
+                    .Take(10)
                     .ToListAsync();
 
                 return Results.Ok(trendingSingers);
             });
+
             // GET /api/home/song/{id}
             group.MapGet("/song/{id}", async (int id, MusicAppDBContext db) =>
             {
                 var song = await db.Songs
-                    .AsNoTracking() // Tối ưu hiệu suất đọc
+                    .AsNoTracking() 
                     .Where(s => s.SongId == id)
                     .Select(s => new SongDetailDto
                     {
@@ -178,5 +208,7 @@ namespace Net.MusicApp.APIs
             });
 
         }
+
+
     }
 }

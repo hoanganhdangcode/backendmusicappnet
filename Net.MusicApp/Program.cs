@@ -24,6 +24,7 @@ var version = new Version(9, 5, 0);
 var serverVersion = new MySqlServerVersion(version);
 builder.Services.AddDbContext<Net.MusicApp.Data.MusicAppDBContext>(
     options => options.UseMySql(connectionString,serverVersion)
+
     );
 
 builder.Services.AddEndpointsApiExplorer();
@@ -70,6 +71,7 @@ builder.Services.AddRateLimiter(_ => {
 });
 var rsa = JWTHelper.LoadRsaPublicKeyFromPem("Keys/rsa_public_key.pem");
 
+
 builder.Services.AddAuthentication("Bearer")
     .AddJwtBearer("Bearer", options =>
     {
@@ -88,6 +90,8 @@ builder.Services.AddAuthentication("Bearer")
     });
 
 builder.Services.AddAuthorization();
+
+builder.Services.AddSingleton<CloudinaryService>();
 
 var app = builder.Build();
 app.UseSwagger();
@@ -111,4 +115,4 @@ app.MapGroupAdmin();
 app.MapGroupUser();
 
 
-app.Run();
+app.Run("https://0.0.0.0:7007");
