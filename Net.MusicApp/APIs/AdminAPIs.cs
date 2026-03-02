@@ -11,16 +11,16 @@ namespace Net.MusicApp.APIs
     public static class AdminAPIs
     {
         public static void MapGroupAdmin(this WebApplication app) {
-            var group= app.MapGroup("/admin").WithTags("Admin APIs");
+            var group= app.MapGroup("/admin").WithTags("Admin APIs").RequireAuthorization();
             group.MapGet("/status", () => "Admin API is running");
             group.MapPost("/singer/add", async ([FromBody] CreateSingerDto dto, MusicAppDBContext dbContext) =>
             {
                 // 1. Chuyển đổi từ DTO sang Entity
                 var newSinger = new Singer
                 {
-                    Name = dto.Name,
-                    Description = dto.Description,
-                    ImageUrl = dto.ImageUrl,
+                    Name =  dto.Name,
+                    Description = CryptoHelper.EncryptAES256(dto.Description),
+                    ImageUrl = CryptoHelper.EncryptAES256(dto.ImageUrl),
                 };
 
                 // 2. Thêm vào DBSet
@@ -31,21 +31,21 @@ namespace Net.MusicApp.APIs
 
                 // 4. Trả về mã 201 Created và thông tin vừa tạo
                 return Results.Created();
-            });
+            }).RequireAuthorization();
             group.MapPost("/genre/add", async ([FromBody] CreateGenreDto dto, MusicAppDBContext dbContext) =>
             {
                 var newGenre = new Genre
                 {
                     Name = dto.Name,
                     // Map đúng tên thuộc tính trong Entity Genre
-                    imageurl = dto.ImageUrl,
+                    imageurl = CryptoHelper.EncryptAES256(dto.ImageUrl),
                 };
 
                 dbContext.Genres.Add(newGenre);
                 await dbContext.SaveChangesAsync();
 
                 return Results.Created();
-            });
+            }).RequireAuthorization();
             group.MapPost("/song/add", async ([FromBody] CreateSongDto dto, MusicAppDBContext dbContext) =>
             {
                 // [Optional] Kiểm tra khóa ngoại (Ca sĩ có tồn tại không?)
@@ -66,9 +66,9 @@ namespace Net.MusicApp.APIs
                 var newSong = new Song
                 {
                     Name = dto.Name,
-                    Description = dto.Description,
-                    AudioUrl = dto.AudioUrl,
-                    ImageUrl = dto.ImageUrl,
+                    Description = CryptoHelper.EncryptAES256(dto.Description),
+                    AudioUrl = CryptoHelper.EncryptAES256(dto.AudioUrl),
+                    ImageUrl = CryptoHelper.EncryptAES256(dto.ImageUrl),
                     SingerId = dto.SingerId, // Gán khóa ngoại
                     GenreId = dto.GenreId,   // Gán khóa ngoại
                 };
@@ -77,7 +77,7 @@ namespace Net.MusicApp.APIs
                 await dbContext.SaveChangesAsync();
 
                 return Results.Created();
-            });
+            }).RequireAuthorization();
             // --- SỬA CA SĨ ---
             group.MapPut("/singer/update/{id}", async (int id, [FromBody] UpdateSingerDto dto, MusicAppDBContext dbContext) =>
             {
@@ -85,14 +85,14 @@ namespace Net.MusicApp.APIs
                 if (singer == null) return Results.NotFound("Không tìm thấy ca sĩ.");
 
                 // Cập nhật thông tin
-                singer.Name = dto.Name;
-                singer.Description = dto.Description;
-                singer.ImageUrl = dto.ImageUrl;
+                singer.Name =dto.Name;
+                singer.Description = CryptoHelper.EncryptAES256(dto.Description);
+                singer.ImageUrl = CryptoHelper.EncryptAES256(dto.ImageUrl);
                 // Lưu ý: Không cập nhật CreatedAt
 
                 await dbContext.SaveChangesAsync();
                 return Results.Ok(singer); // Trả về đối tượng đã sửa
-            });
+            }).RequireAuthorization();
 
             // --- SỬA THỂ LOẠI ---
             group.MapPut("/genre/update/{id}", async (int id, [FromBody] UpdateGenreDto dto, MusicAppDBContext dbContext) =>
@@ -101,11 +101,11 @@ namespace Net.MusicApp.APIs
                 if (genre == null) return Results.NotFound("Không tìm thấy thể loại.");
 
                 genre.Name = dto.Name;
-                genre.imageurl = dto.ImageUrl; // Map đúng thuộc tính imageurl (viết thường) trong entity
+                genre.imageurl = CryptoHelper.EncryptAES256(dto.ImageUrl); // Map đúng thuộc tính imageurl (viết thường) trong entity
 
                 await dbContext.SaveChangesAsync();
                 return Results.Ok(genre);
-            });
+            }).RequireAuthorization();
 
             // --- SỬA BÀI HÁT ---
             group.MapPut("/song/update/{id}", async (int id, [FromBody] UpdateSongDto dto, MusicAppDBContext dbContext) =>
@@ -125,15 +125,15 @@ namespace Net.MusicApp.APIs
                     return Results.BadRequest("Thể loại không tồn tại.");
                 }
                 song.Name = dto.Name;
-                song.Description = dto.Description;
-                song.AudioUrl = dto.AudioUrl;
-                song.ImageUrl = dto.ImageUrl;
+                song.Description = CryptoHelper.EncryptAES256(dto.Description);
+                song.AudioUrl = CryptoHelper.EncryptAES256(dto.AudioUrl);
+                song.ImageUrl = CryptoHelper.EncryptAES256(dto.ImageUrl);
                 song.SingerId = dto.SingerId; // Cho phép đổi ca sĩ
                 song.GenreId = dto.GenreId;   // Cho phép đổi thể loại
 
                 await dbContext.SaveChangesAsync();
                 return Results.Ok();
-            });
+            }).RequireAuthorization();
             // --- XÓA CA SĨ ---
             group.MapDelete("/singer/delete/{id}", async (int id, MusicAppDBContext dbContext) =>
             {
@@ -153,7 +153,7 @@ namespace Net.MusicApp.APIs
                 await dbContext.SaveChangesAsync();
 
                 return Results.Ok("Đã xóa ca sĩ thành công.");
-            });
+            }).RequireAuthorization();
 
             // --- XÓA THỂ LOẠI ---
             group.MapDelete("/genre/delete/{id}", async (int id, MusicAppDBContext dbContext) =>
@@ -174,8 +174,8 @@ namespace Net.MusicApp.APIs
                 dbContext.Genres.Remove(genre);
                 await dbContext.SaveChangesAsync();
 
-                return Results.Ok("Đã xóa thể loại thành công.");
-            });
+                return Results.Ok();
+            }).RequireAuthorization();
 
             group.MapDelete("/song/delete/{id}", async (int id, MusicAppDBContext dbContext) =>
             {
@@ -185,8 +185,8 @@ namespace Net.MusicApp.APIs
                 dbContext.Songs.Remove(song);
                 await dbContext.SaveChangesAsync();
 
-                return Results.Ok("Đã xóa bài hát.");
-            });
+                return Results.Ok();
+            }).RequireAuthorization();
 
             group.MapGet("/songs", async (MusicAppDBContext db, string? keyword) =>
             {
@@ -201,11 +201,11 @@ namespace Net.MusicApp.APIs
                     .OrderByDescending(s => s.CreatedAt)
                     .Select(s => new SongDto
                     {
-                        SongId = s.SongId,
+                        SongId =  s.SongId,
                         Name = s.Name,
-                        Description = s.Description,
-                        AudioUrl = s.AudioUrl,
-                        ImageUrl = s.ImageUrl,
+                        Description = CryptoHelper.DecryptAES256(s.Description),
+                        AudioUrl = CryptoHelper.DecryptAES256(s.AudioUrl),
+                        ImageUrl = CryptoHelper.DecryptAES256(s.ImageUrl),
                         CreatedAt = s.CreatedAt,
                         SingerId = s.SingerId,
                         SingerName = s.Singer.Name,
@@ -215,7 +215,7 @@ namespace Net.MusicApp.APIs
                     .ToListAsync();
 
                 return Results.Ok(items);
-            });
+            }).RequireAuthorization();
 
 
             group.MapGet("/singers", async (MusicAppDBContext db, string? keyword) =>
@@ -233,14 +233,14 @@ namespace Net.MusicApp.APIs
                     {
                         SingerId = s.SingerId,
                         Name = s.Name,
-                        Description = s.Description,
-                        ImageUrl = s.ImageUrl,
+                        Description = CryptoHelper.DecryptAES256( s.Description),
+                        ImageUrl = CryptoHelper.DecryptAES256(s.ImageUrl),
                         CreatedAt = s.CreatedAt
                     })
                     .ToListAsync();
 
                 return Results.Ok(items);
-            });
+            }).RequireAuthorization();
             group.MapGet("/genres", async (MusicAppDBContext db, string? keyword) =>
             {
                 var query = db.Genres.AsNoTracking();
@@ -256,24 +256,20 @@ namespace Net.MusicApp.APIs
                     {
                         GenreId = g.GenreId,
                         Name = g.Name,
-                        ImageUrl = g.imageurl, 
+                        ImageUrl = CryptoHelper.DecryptAES256(g.imageurl), 
                         CreatedAt = g.CreatedAt
                     })
                     .ToListAsync();
 
                 return Results.Ok(items);
-            });
+            }).RequireAuthorization();
             group.MapGet("/users", async (MusicAppDBContext db, string? keyword) =>
             {
                 var query = db.Users.AsNoTracking();
-
                 if (!string.IsNullOrWhiteSpace(keyword))
                 {
-                    query = query.Where(u =>
-                        u.Name.Contains(keyword) ||
-                        u.Email.Contains(keyword));
+                    query = query.Where(u => u.Name.Contains(keyword));
                 }
-
                 var items = await query
                     .OrderByDescending(u => u.CreatedAt)
                     .Select(u => new UserDto
@@ -281,23 +277,14 @@ namespace Net.MusicApp.APIs
                         UserId = u.UserId,
                         Name = u.Name,
                         Email = u.Email,
-                        AvatarUrl = u.AvatarUrl,
+                        AvatarUrl = CryptoHelper.DecryptAES256(u.AvatarUrl),
                         Role = u.Role == 0 ? "User" : "Admin",
                         CreatedAt = u.CreatedAt
                     })
                     .ToListAsync();
 
-                foreach (var u in items)
-                {
-                    if (!string.IsNullOrEmpty(u.Name))
-                        u.Name = CryptoHelper.DecryptAES256(u.Name);
-
-                    if (!string.IsNullOrEmpty(u.AvatarUrl))
-                        u.AvatarUrl = CryptoHelper.DecryptAES256(u.AvatarUrl);
-                }
-
                 return Results.Ok(items);
-            });
+            }).RequireAuthorization();
             group.MapGet("/upload/signature", (CloudinaryService cloudinary, IConfiguration configuration) =>
             {
                 var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
@@ -320,7 +307,7 @@ namespace Net.MusicApp.APIs
                     signature,
                     folder = "musicapp"
                 });
-            });
+            }).RequireAuthorization();
 
 
 

@@ -46,7 +46,7 @@ namespace Net.MusicApp.APIs
                     User = new UserInfoResponseDto
                     {
                         UserId = user.UserId,
-                        Name = user.Name != null ? CryptoHelper.DecryptAES256(user.Name) : "",
+                        Name = user.Name,
                         Email = user.Email,
                         AvatarUrl = user.AvatarUrl != null
                             ? CryptoHelper.DecryptAES256(user.AvatarUrl)
@@ -65,7 +65,7 @@ namespace Net.MusicApp.APIs
                 if (user != null) { return Results.Conflict("Email đã tồn tại"); }
                 var useradd = new User
                 {
-                  Name = dto.Name != null ? CryptoHelper.EncryptAES256(dto.Name):"",
+                  Name = dto.Name,
                     Email = dto.Email,
                     Password = CryptoHelper.HashSHA256(dto.Password)
                 };
@@ -103,9 +103,9 @@ namespace Net.MusicApp.APIs
                 return Results.Ok(new UserInfoResponseDto
                 {
                     UserId = user.UserId,
-                    Name = CryptoHelper.DecryptAES256(user.Name),
+                    Name = user.Name,
                     Email = user.Email,
-                    AvatarUrl = user.AvatarUrl,
+                    AvatarUrl = user.AvatarUrl!=null?CryptoHelper.DecryptAES256(user.AvatarUrl):"",
                     Role = (int)user.Role
                 });
             })

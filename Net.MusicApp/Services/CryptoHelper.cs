@@ -1,4 +1,5 @@
-﻿using System.Security.Cryptography;
+﻿using System.Buffers.Text;
+using System.Security.Cryptography;
 using System.Text;
 
 namespace Net.MusicApp.Services
@@ -28,21 +29,17 @@ namespace Net.MusicApp.Services
         }
         #endregion
 
-        public static string HashSHA256(string input)
+        public static string HashSHA256(string? input)
+
         {
+            if (string.IsNullOrWhiteSpace(input)) return "";
             using var sha256 = System.Security.Cryptography.SHA256.Create();
             var bytes = System.Text.Encoding.UTF8.GetBytes(input);
             var hash = sha256.ComputeHash(bytes);
             return Convert.ToBase64String(hash);
         }
-        //public static string HashMD5(string input)
-        //{
-        //    using var md5 = System.Security.Cryptography.MD5.Create();
-        //    var bytes = System.Text.Encoding.UTF8.GetBytes(input);
-        //    var hash = md5.ComputeHash(bytes);
-        //    return Convert.ToBase64String(hash);
-        //}
-        public static string EncryptAES256(string plainText)
+       
+        public static string EncryptAES256(string? plainText)
         {
             if (string.IsNullOrWhiteSpace(plainText)) return "";
 
@@ -54,7 +51,6 @@ namespace Net.MusicApp.Services
             var plainBytes = Encoding.UTF8.GetBytes(plainText);
             var encrypted = encryptor.TransformFinalBlock(plainBytes, 0, plainBytes.Length);
 
-            // prepend IV + cipher, lưu Base64
             var result = new byte[aes.IV.Length + encrypted.Length];
             Buffer.BlockCopy(aes.IV, 0, result, 0, aes.IV.Length);
             Buffer.BlockCopy(encrypted, 0, result, aes.IV.Length, encrypted.Length);
@@ -63,9 +59,10 @@ namespace Net.MusicApp.Services
         }
 
 
-        public static string DecryptAES256(string cipherTextBase64)
+        public static string DecryptAES256(string? cipherTextBase64)
         {
             if (string.IsNullOrWhiteSpace(cipherTextBase64)) return "";
+           
             var fullCipher = Convert.FromBase64String(cipherTextBase64);
 
             var iv = new byte[16]; // AES block size

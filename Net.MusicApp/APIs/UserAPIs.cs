@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Net.MusicApp.Data;
 using Net.MusicApp.DTOs;
 using Net.MusicApp.Entities;
+using Net.MusicApp.Services;
 
 namespace Net.MusicApp.APIs
 {
@@ -10,7 +11,7 @@ namespace Net.MusicApp.APIs
     {
         public static void MapGroupUser(this WebApplication app)
         {
-            var group = app.MapGroup("/user").WithTags("User APIs");
+            var group = app.MapGroup("/user").WithTags("User APIs").RequireAuthorization();
             group.MapPost("/playlist/add", async ([FromBody] CreatePlaylistDto dto, MusicAppDBContext dbContext) =>
             {
                 // 1. Kiểm tra User có tồn tại không
@@ -62,8 +63,8 @@ namespace Net.MusicApp.APIs
                     {
                         SongId = s.SongId,
                         Name = s.Name,
-                        ImageUrl = s.ImageUrl,
-                        AudioUrl = s.AudioUrl,
+                        ImageUrl = CryptoHelper.DecryptAES256( s.ImageUrl),
+                        AudioUrl = CryptoHelper.DecryptAES256(s.AudioUrl),
                         SingerName = s.Singer!=null?s.Singer.Name:"",
                         GenreName = s.Genre!=null?s.Genre.Name:"",
                         listenCount = s.listenCount, 
@@ -91,8 +92,8 @@ namespace Net.MusicApp.APIs
                     {
                         SongId = s.SongId,
                         Name = s.Name,
-                        ImageUrl = s.ImageUrl,
-                        AudioUrl = s.AudioUrl,
+                        ImageUrl = CryptoHelper.DecryptAES256(s.ImageUrl),
+                        AudioUrl = CryptoHelper.DecryptAES256(s.AudioUrl),
                         SingerName = s.Singer != null ? s.Singer.Name : "",
                         GenreName = s.Genre != null ? s.Genre.Name : "",
                         listenCount = s.listenCount,
@@ -110,7 +111,7 @@ namespace Net.MusicApp.APIs
                     {
                         SingerId = s.SingerId,
                         Name = s.Name,
-                        ImageUrl = s.ImageUrl,
+                        ImageUrl = CryptoHelper.DecryptAES256(s.ImageUrl),
                         TotalListens = s.Songs
                             .Select(song => (int?)song.listenCount)
                             .Sum() ?? 0,
@@ -133,16 +134,16 @@ namespace Net.MusicApp.APIs
                     {
                         SongId = s.SongId,
                         Name = s.Name,
-                        Description = s.Description,
-                        AudioUrl = s.AudioUrl,
-                        ImageUrl = s.ImageUrl,
+                        Description = CryptoHelper.DecryptAES256(s.Description),
+                        AudioUrl = CryptoHelper.DecryptAES256(s.AudioUrl),
+                        ImageUrl = CryptoHelper.DecryptAES256(s.ImageUrl),
                         ListenCount = s.listenCount,
                         CreatedAt = s.CreatedAt,
 
                         // Map thông tin ca sĩ
                         SingerId = s.SingerId,
                         SingerName = s.Singer.Name,
-                        SingerAvatar = s.Singer.ImageUrl,
+                        SingerAvatar = CryptoHelper.DecryptAES256(s.Singer.ImageUrl),
 
                         // Map thông tin thể loại
                         GenreId = s.GenreId,
@@ -163,8 +164,8 @@ namespace Net.MusicApp.APIs
                     {
                         SingerId = s.SingerId,
                         Name = s.Name,
-                        Description = s.Description,
-                        ImageUrl = s.ImageUrl,
+                        Description = CryptoHelper.DecryptAES256(s.Description),
+                        ImageUrl = CryptoHelper.DecryptAES256(s.ImageUrl),
                         // Đếm số lượng bài hát
                         SongCount = s.Songs.Count(),
                         // Tính tổng lượt nghe (nếu em đã làm tính năng đếm lượt nghe)
@@ -180,8 +181,8 @@ namespace Net.MusicApp.APIs
             group.MapGet("/singer/{id}/songs", async (int id, MusicAppDBContext db) =>
             {
                 // Kiểm tra ca sĩ có tồn tại không (Tuỳ chọn, có thể bỏ qua để tối ưu)
-                // var exists = await db.Singers.AnyAsync(s => s.SingerId == id);
-                // if (!exists) return Results.NotFound("Ca sĩ không tồn tại.");
+                var exists = await db.Singers.AnyAsync(s => s.SingerId == id);
+                if (!exists) return Results.NotFound();
 
                 var songs = await db.Songs
                     .AsNoTracking()
@@ -191,8 +192,37 @@ namespace Net.MusicApp.APIs
                     {
                         SongId = s.SongId,
                         Name = s.Name,
-                        AudioUrl = s.AudioUrl,
-                        ImageUrl = s.ImageUrl,
+                        AudioUrl = CryptoHelper.DecryptAES256(s.AudioUrl),
+                        ImageUrl = CryptoHelper.DecryptAES256(s.ImageUrl),
+                        ListenCount = s.listenCount,
+                        CreatedAt = s.CreatedAt,
+
+                        // Vẫn trả về tên ca sĩ/thể loại cho đầy đủ
+                        SingerId = s.SingerId,
+                        SingerName = s.Singer.Name,
+                        GenreId = s.GenreId,
+                        GenreName = s.Genre.Name
+                    })
+                    .ToListAsync();
+
+                return Results.Ok(songs);
+            });
+            group.MapGet("/genre/{id}/songs", async (int id, MusicAppDBContext db) =>
+            {
+                // Kiểm tra ca sĩ có tồn tại không (Tuỳ chọn, có thể bỏ qua để tối ưu)
+                var exists = await db.Genres.AnyAsync(s => s.GenreId == id);
+                if (!exists) return Results.NotFound();
+
+                var songs = await db.Songs
+                    .AsNoTracking()
+                    .Where(s => s.GenreId == id) // Lọc theo ID ca sĩ
+                    .OrderByDescending(s => s.CreatedAt) // Bài mới nhất lên đầu
+                    .Select(s => new SongDetailDto // Tái sử dụng DTO bài hát
+                    {
+                        SongId = s.SongId,
+                        Name = s.Name,
+                        AudioUrl = CryptoHelper.DecryptAES256(s.AudioUrl),
+                        ImageUrl = CryptoHelper.DecryptAES256(s.ImageUrl),
                         ListenCount = s.listenCount,
                         CreatedAt = s.CreatedAt,
 
