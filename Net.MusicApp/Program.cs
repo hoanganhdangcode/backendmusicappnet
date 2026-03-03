@@ -20,12 +20,13 @@ var builder = WebApplication.CreateBuilder(args);
 
 
 var connectionString = builder.Configuration.GetConnectionString("MySqlConnection");
-var version = new Version(9, 5, 0);
-var serverVersion = new MySqlServerVersion(version);
-builder.Services.AddDbContext<Net.MusicApp.Data.MusicAppDBContext>(
-    options => options.UseMySql(connectionString,serverVersion)
 
-    );
+builder.Services.AddDbContext<Net.MusicApp.Data.MusicAppDBContext>(
+    options => options.UseMySql(
+        connectionString,
+        ServerVersion.AutoDetect(connectionString)
+    )
+);
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(
@@ -69,8 +70,10 @@ builder.Services.AddRateLimiter(_ => {
             });
     });
 });
-var rsa = JWTHelper.LoadRsaPublicKeyFromPem("Keys/rsa_public_key.pem");
+var keyPath = Environment.GetEnvironmentVariable("JWT_PUBLIC_KEY_PATH")
+              ?? throw new Exception("JWT_PUBLIC_KEY_PATH not set");
 
+var rsa = JWTHelper.LoadRsaPublicKeyFromPem(keyPath);
 
 builder.Services.AddAuthentication("Bearer")
     .AddJwtBearer("Bearer", options =>
@@ -105,7 +108,7 @@ app.UseSwaggerUI(
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.UseHttpsRedirection();
+//app.UseHttpsRedirection();
 app.UseRateLimiter();
 
 
@@ -115,4 +118,4 @@ app.MapGroupAdmin();
 app.MapGroupUser();
 
 
-app.Run("https://0.0.0.0:7007");
+app.Run();

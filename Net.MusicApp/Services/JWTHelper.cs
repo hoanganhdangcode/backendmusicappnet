@@ -75,8 +75,10 @@ namespace Net.MusicApp.Services
         public static string GenerateToken(IEnumerable<Claim> claim, TimeSpan timetoexp)
         {
             var rsa = RSA.Create();
-             rsa = LoadRsaPrivateKeyFromPem("Keys/rsa_private_key.pem");
+            var keyPath = Environment.GetEnvironmentVariable("JWT_PUBLIC_KEY_PATH")
+                          ?? throw new Exception("JWT_PUBLIC_KEY_PATH not set");
 
+             rsa = JWTHelper.LoadRsaPublicKeyFromPem(keyPath);
             var credentials = new SigningCredentials(
                 new RsaSecurityKey(rsa),
                 SecurityAlgorithms.RsaSha256

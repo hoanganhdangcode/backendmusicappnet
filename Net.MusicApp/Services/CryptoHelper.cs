@@ -13,7 +13,8 @@ namespace Net.MusicApp.Services
 
         private static byte[] LoadOrGenerateKeyAES()
         {
-            var filePath = "./Keys/aes_key.txt";
+            var filePath = Environment.GetEnvironmentVariable("JWT_PUBLIC_KEY_PATH")
+                          ?? throw new Exception("JWT_PUBLIC_KEY_PATH not set");
             byte[] key;
             if (File.Exists(filePath))
             {
